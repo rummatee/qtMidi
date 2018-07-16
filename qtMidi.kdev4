@@ -1,0 +1,4 @@
+[Project]
+Name=qtMidi
+Manager=KDevCMakeManager
+VersionControl=kdevgit
