@@ -12,6 +12,7 @@
 #include <QTableView>
 #include <QItemDelegate>
 #include <QStandardItemModel>
+#include <QLineEdit>
 
 class qtMidi : public QMainWindow
 {
@@ -25,16 +26,21 @@ public:
 private:
     QTableView *devicesListWidget;
     QStandardItemModel *devicesListModel;
+    QPushButton *connectSynth;
     QMenuBar *menuBar;
     QLabel *label;
     QPushButton *selectFile;
     QPushButton *startPlaying;
+    QPushButton *stopPlaying;
+    QLineEdit *fileNameEdit;
     
     QString midiFileName;
     
 private slots:
     void pickFile();
     void play();
+public slots:
+    void reloadDevices();
     
 };
 
