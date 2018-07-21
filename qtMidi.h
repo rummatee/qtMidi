@@ -26,19 +26,25 @@ public:
 private:
     QTableView *devicesListWidget;
     QStandardItemModel *devicesListModel;
-    QPushButton *connectSynth;
+    QPushButton *connectSynthButton;
     QMenuBar *menuBar;
     QLabel *label;
     QPushButton *selectFile;
     QPushButton *startPlaying;
     QPushButton *stopPlaying;
     QLineEdit *fileNameEdit;
+    QProcess *qprocessSynth;
+    QProcess *qprocessPlay;
     
     QString midiFileName;
     
 private slots:
     void pickFile();
     void play();
+    void finished();
+    void stop();
+    void connectSynth();
+    void synthReady();
 public slots:
     void reloadDevices();
     

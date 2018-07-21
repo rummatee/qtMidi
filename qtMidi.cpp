@@ -7,10 +7,15 @@
 #include <QDebug>
 #include <QHeaderView>
 #include <QTextCodec>
+#include <iostream>
+#include <unistd.h>
+
 
 
 qtMidi::qtMidi()
 {
+  
+    qprocessPlay = NULL;
   
     QTextCodec::setCodecForTr(QTextCodec::codecForName("UTF-8"));
   
@@ -25,9 +30,7 @@ qtMidi::qtMidi()
     setMenuBar(menuBar);
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
-    label = new QLabel( );
-    label->setText( "Hello World!" );
-    mainLayout->addWidget(label);
+
     
     QGroupBox *deviceConfigurationGroup= new QGroupBox(tr("konfiguriere Geräte"));
     QGridLayout *devicesLayout = new QGridLayout();
@@ -41,9 +44,9 @@ qtMidi::qtMidi()
     devicesListWidget->horizontalHeader()->setResizeMode(QHeaderView::ResizeToContents);
     devicesLayout->addWidget(devicesListWidget);
     
-    connectSynth = new QPushButton(tr("Synthesyser verbinden"));
-    
-    devicesLayout->addWidget(connectSynth,1,0);
+    connectSynthButton = new QPushButton(tr("Synthesyser verbinden"));
+    connect(connectSynthButton, SIGNAL(released()), SLOT(connectSynth()));
+    devicesLayout->addWidget(connectSynthButton,1,0);
     deviceConfigurationGroup->setLayout(devicesLayout);
     
     
@@ -63,15 +66,22 @@ qtMidi::qtMidi()
     
     
     QGroupBox *playGroup= new QGroupBox(tr("Abspielen"));
-    QHBoxLayout *playLayout = new QHBoxLayout();
+    QGridLayout *playLayout = new QGridLayout();
+    
+    label = new QLabel( );
+    label->setText( tr("Bitte Gerät und Datei auswählen") );
+    playLayout->addWidget(label,0,0);
 
 
     startPlaying = new QPushButton(tr("Abspielen"));
+    startPlaying->setEnabled(false);
     connect(startPlaying, SIGNAL(released()), SLOT(play()));
-    playLayout->addWidget(startPlaying);
+    playLayout->addWidget(startPlaying,1,0);
     
     stopPlaying = new QPushButton(tr("Stop"));
-    playLayout->addWidget(stopPlaying);
+    stopPlaying->setEnabled(false);
+    connect(stopPlaying, SIGNAL(released()), SLOT(stop()));
+    playLayout->addWidget(stopPlaying,1,1);
     
     
     playGroup->setLayout(playLayout);
@@ -87,7 +97,14 @@ qtMidi::qtMidi()
 }
 
 qtMidi::~qtMidi()
-{}
+{
+    if (qprocessPlay != NULL) {
+      qprocessPlay->kill();
+    }
+    if (qprocessSynth != NULL) {
+      qprocessSynth->kill();
+    }
+}
 
 void qtMidi::setString(QString string)
 {
@@ -114,15 +131,28 @@ void qtMidi::pickFile()
 {
     midiFileName = QFileDialog::getOpenFileName(this, tr("Öffne Midi Datei"), "", tr("Midi (*.mid)"));
     if (midiFileName != NULL) {
-      label->setText(midiFileName);
+      fileNameEdit->setText(midiFileName);
+      startPlaying->setEnabled(true);
+      label->setText("bereit");
     }
 }
 
 void qtMidi::play()
 {
-    QProcess *qprocessPlay = new QProcess();
-    QString deviceID = devicesListModel->itemFromIndex(devicesListWidget->selectionModel()->selectedRows().first())->text();
-    qprocessPlay->start("aplaymidi -p "+deviceID+" "+midiFileName);
+    if (qprocessPlay==NULL) {
+      qprocessPlay = new QProcess();
+      qprocessPlay->setProcessChannelMode(QProcess::MergedChannels);
+      QString deviceID = devicesListModel->itemFromIndex(devicesListWidget->selectionModel()->selectedRows().first())->text();
+      QStringList args = QStringList()<<"-p"<<deviceID <<midiFileName;
+      //midiFileName.replace(" ","\\ ");
+      std::cout << ("aplaymidi -p "+deviceID+" "+midiFileName).toStdString()<<std::endl;
+      //qprocessPlay->start("aplaymidi -p "+deviceID,args);
+      qprocessPlay->start("aplaymidi -p "+deviceID+" "+midiFileName);
+      connect(qprocessPlay,SIGNAL(finished(int)),SLOT(finished()));
+      label->setText("spiele ab");
+      stopPlaying->setEnabled(true);
+      startPlaying->setEnabled(false);
+    }
     
 }
 
@@ -136,7 +166,66 @@ void qtMidi::reloadDevices()
     setDevices(devicesList);
 }
 
+void qtMidi::finished()
+{
+    std::cout << QString(qprocessPlay->readAllStandardOutput()).toStdString()<<std::endl;
+    qprocessPlay = NULL;
+    startPlaying->setEnabled(true);
+    stopPlaying->setEnabled(false);
+    label->setText("beendet");
+}
+
+void qtMidi::stop()
+{
+    if (qprocessPlay != NULL) {
+      
+      qprocessPlay->kill();
+      qprocessPlay = NULL;
+      startPlaying->setEnabled(true);
+      stopPlaying->setEnabled(false);
+      label->setText("abgebrochen");
+    }
+}
+
+void qtMidi::connectSynth()
+{
+    qprocessSynth = new QProcess();
+    //qprocessSynth->setProcessChannelMode(QProcess::ForwardedChannels);
+    //qprocessSynth->setReadChannel(QProcess::StandardOutput);
+    qprocessSynth->start("timidity -iA");
+    //QString output(qprocessSynth->readAllStandardOutput());
+    //std::cout << output.toStdString()<<std::endl;
+    //connect(qprocessSynth,SIGNAL(readyReadStandardOutput()),SLOT(synthReady()));
+    QProcess *qprocessGetDeviceList = new QProcess();
+    usleep(100000);
+    qprocessGetDeviceList->start("aplaymidi -l");
+    std::cout << "aplaymidi -l"<<std::endl;
+    qprocessGetDeviceList->waitForFinished();
+    QString output(qprocessGetDeviceList->readAllStandardOutput());
+    std::cout << output.toStdString()<<std::endl;
+    QStringList devicesList = output.split("\n");
+    QString port;
+    for ( QStringList::iterator it = devicesList.begin(); it != devicesList.end();++it  ) {
+      QList<QStandardItem*> item;
+      QStringList parts = ((*it).split("  ", QString::SkipEmptyParts));
+      if (parts.value(1) == "TiMidity") {
+	port = parts.value(0);
+	break;
+      }
+    }
+    QProcess *qprocessConnect = new QProcess();
+    qprocessConnect->setProcessChannelMode(QProcess::ForwardedChannels);
+    QString deviceID = devicesListModel->itemFromIndex(devicesListWidget->selectionModel()->selectedRows().first())->text();
+    std::cout << ("aconnect "+deviceID+" "+port).toStdString()<<std::endl;
+    qprocessConnect->start("aconnect "+deviceID+" "+port);
+    //qprocessSynth->waitForBytesWritten();
+
+}
 
 
+void qtMidi::synthReady()
+{
+
+}
 
 #include "qtMidi.moc"
