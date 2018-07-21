@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=qtMidi
+Exec=qtmidi
+Type=Application
+Icon=qtmidi
+Categories=Qt;KDE;AudioVideo;Audio;
