@@ -168,11 +168,13 @@ void qtMidi::reloadDevices()
 
 void qtMidi::finished()
 {
-    std::cout << QString(qprocessPlay->readAllStandardOutput()).toStdString()<<std::endl;
-    qprocessPlay = NULL;
-    startPlaying->setEnabled(true);
-    stopPlaying->setEnabled(false);
-    label->setText("beendet");
+    if (qprocessPlay != NULL) {
+      std::cout << QString(qprocessPlay->readAllStandardOutput()).toStdString()<<std::endl;
+      qprocessPlay = NULL;
+      startPlaying->setEnabled(true);
+      stopPlaying->setEnabled(false);
+      label->setText("beendet");
+    }
 }
 
 void qtMidi::stop()
@@ -197,7 +199,7 @@ void qtMidi::connectSynth()
     //std::cout << output.toStdString()<<std::endl;
     //connect(qprocessSynth,SIGNAL(readyReadStandardOutput()),SLOT(synthReady()));
     QProcess *qprocessGetDeviceList = new QProcess();
-    usleep(100000);
+    usleep(500000);
     qprocessGetDeviceList->start("aplaymidi -l");
     std::cout << "aplaymidi -l"<<std::endl;
     qprocessGetDeviceList->waitForFinished();
