@@ -129,7 +129,7 @@ void qtMidi::setDevices(QStringList list)
 
 void qtMidi::pickFile()
 {
-    midiFileName = QFileDialog::getOpenFileName(this, tr("Öffne Midi Datei"), "", tr("Midi (*.mid)"));
+    midiFileName = QFileDialog::getOpenFileName(this, tr("Öffne Midi Datei"), QDir::homePath(), tr("Midi (*.mid)"));
     if (midiFileName != NULL) {
       fileNameEdit->setText(midiFileName);
       startPlaying->setEnabled(true);
@@ -170,6 +170,7 @@ void qtMidi::finished()
 {
     if (qprocessPlay != NULL) {
       std::cout << QString(qprocessPlay->readAllStandardOutput()).toStdString()<<std::endl;
+      qprocessPlay->deleteLater();
       qprocessPlay = NULL;
       startPlaying->setEnabled(true);
       stopPlaying->setEnabled(false);
@@ -182,6 +183,7 @@ void qtMidi::stop()
     if (qprocessPlay != NULL) {
       
       qprocessPlay->kill();
+      qprocessPlay->deleteLater();
       qprocessPlay = NULL;
       startPlaying->setEnabled(true);
       stopPlaying->setEnabled(false);
