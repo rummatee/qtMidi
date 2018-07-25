@@ -16,6 +16,7 @@ qtMidi::qtMidi()
 {
   
     qprocessPlay = NULL;
+    qprocessRecord = NULL;
   
     QTextCodec::setCodecForTr(QTextCodec::codecForName("UTF-8"));
   
@@ -48,6 +49,9 @@ qtMidi::qtMidi()
     connect(connectSynthButton, SIGNAL(released()), SLOT(connectSynth()));
     devicesLayout->addWidget(connectSynthButton,1,0);
     deviceConfigurationGroup->setLayout(devicesLayout);
+    
+    playPage = new QWidget;
+    QVBoxLayout *playPageLayout = new QVBoxLayout;
     
     
     
@@ -87,9 +91,65 @@ qtMidi::qtMidi()
     playGroup->setLayout(playLayout);
     
     
+    
+    recordPage = new QWidget;
+    QVBoxLayout *recordPageLayout = new QVBoxLayout;
+    
+    
+    
+    QGroupBox *fileGroupRecord= new QGroupBox(tr("wähle Datei zum speichern"));
+    QGridLayout *fileLayoutRecord = new QGridLayout();
+    
+    fileNameEditRecord = new QLineEdit;
+    
+    selectFileRecord = new QPushButton(tr("Mide Datei speichern unter"));
+    connect(selectFileRecord, SIGNAL(released()), SLOT(pickFileRecord()));
+    
+    fileLayoutRecord->addWidget(fileNameEditRecord,0,0);
+    fileLayoutRecord->addWidget(selectFileRecord,0,1);
+    
+    fileGroupRecord->setLayout(fileLayoutRecord);
+    
+    QGroupBox *recordGroup= new QGroupBox(tr("Abspielen"));
+    QGridLayout *recordLayout = new QGridLayout();
+    
+    labelRecord = new QLabel( );
+    labelRecord->setText( tr("Bitte Gerät und Datei auswählen") );
+    recordLayout->addWidget(labelRecord,0,0);
+
+
+    startRecordingButton = new QPushButton(tr("Aufnehmen"));
+    startRecordingButton->setEnabled(false);
+    connect(startRecordingButton, SIGNAL(released()), SLOT(record()));
+    recordLayout->addWidget(startRecordingButton,1,0);
+    
+    stopRecordingButton = new QPushButton(tr("Stop"));
+    stopRecordingButton->setEnabled(false);
+    connect(stopRecordingButton, SIGNAL(released()), SLOT(stopRecording()));
+    recordLayout->addWidget(stopRecordingButton,1,1);
+    
+    
+    recordGroup->setLayout(recordLayout);
+    
+    recordPageLayout->addWidget(fileGroupRecord);
+    recordPageLayout->addWidget(recordGroup);
+    
+    recordPage->setLayout(recordPageLayout);
+    
+    tabs = new QTabWidget;
+    playPageLayout->addWidget(fileGroup);
+    playPageLayout->addWidget(playGroup);
+    
+    
     mainLayout->addWidget(deviceConfigurationGroup);
-    mainLayout->addWidget(fileGroup);
-    mainLayout->addWidget(playGroup);
+    
+    playPage->setLayout(playPageLayout);
+    
+    tabs->addTab(playPage,"abspielen");
+    
+    tabs->addTab(recordPage,"aufnehmen");
+    
+    mainLayout->addWidget(tabs);
     
     QFrame *mainGroup = new QFrame;
     mainGroup->setLayout(mainLayout);
@@ -134,6 +194,16 @@ void qtMidi::pickFile()
       fileNameEdit->setText(midiFileName);
       startPlaying->setEnabled(true);
       label->setText("bereit");
+    }
+}
+
+void qtMidi::pickFileRecord()
+{
+    midiFileNameRecord = QFileDialog::getSaveFileName(this, tr("Öffne Midi Datei"), QDir::homePath(), tr("Midi (*.mid)"));
+    if (midiFileNameRecord != NULL) {
+      fileNameEditRecord->setText(midiFileNameRecord);
+      startRecordingButton->setEnabled(true);
+      labelRecord->setText("bereit");
     }
 }
 
@@ -231,5 +301,39 @@ void qtMidi::synthReady()
 {
 
 }
+
+void qtMidi::record()
+{
+    if (qprocessRecord==NULL) {
+      qprocessRecord = new QProcess();
+      qprocessRecord->setProcessChannelMode(QProcess::MergedChannels);
+      QString deviceID = devicesListModel->itemFromIndex(devicesListWidget->selectionModel()->selectedRows().first())->text();
+      QStringList args = QStringList()<<"-p"<<deviceID <<midiFileName;
+      //midiFileName.replace(" ","\\ ");
+      std::cout << ("arecordmidi -p "+deviceID+" "+midiFileNameRecord).toStdString()<<std::endl;
+      //qprocessPlay->start("aplaymidi -p "+deviceID,args);
+      qprocessRecord->start("arecordmidi -p "+deviceID+" "+midiFileNameRecord);
+      //connect(qprocessPlay,SIGNAL(finished(int)),SLOT(finished()));
+      labelRecord->setText("nehme auf");
+      stopRecordingButton->setEnabled(true);
+      startRecordingButton->setEnabled(false);
+    }
+}
+
+void qtMidi::stopRecording()
+{
+    if (qprocessRecord != NULL) {
+      
+      qprocessRecord->terminate();
+      qprocessRecord->deleteLater();
+      qprocessRecord = NULL;
+      startRecordingButton->setEnabled(true);
+      stopRecordingButton->setEnabled(false);
+      label->setText("Aufnahme beendet");
+    }
+}
+
+
+
 
 #include "qtMidi.moc"

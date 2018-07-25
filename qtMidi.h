@@ -30,19 +30,33 @@ private:
     QMenuBar *menuBar;
     QLabel *label;
     QPushButton *selectFile;
+    QPushButton *selectFileRecord;
     QPushButton *startPlaying;
     QPushButton *stopPlaying;
+    QPushButton *saveFile;
+    QPushButton *startRecordingButton;
+    QPushButton *stopRecordingButton;
     QLineEdit *fileNameEdit;
+    QLineEdit *fileNameEditRecord;
     QProcess *qprocessSynth;
     QProcess *qprocessPlay;
+    QProcess *qprocessRecord;
+    QWidget *playPage;
+    QWidget *recordPage;
+    QTabWidget *tabs;
     
     QString midiFileName;
+    QString midiFileNameRecord;
+    QLabel* labelRecord;
     
 private slots:
     void pickFile();
+    void pickFileRecord();
     void play();
+    void record();
     void finished();
     void stop();
+    void stopRecording();
     void connectSynth();
     void synthReady();
 public slots:
